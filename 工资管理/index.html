@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>公司月度工资计算</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- 登录门禁：未登录时只显示 auth-gate -->
+    <div id="auth-gate" class="auth-gate" aria-live="polite">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <div class="auth-mark" aria-hidden="true"></div>
+          <div>
+            <h1>工资计算系统</h1>
+            <p>仅限财务人员使用</p>
+          </div>
+        </div>
+
+        <form id="login-form" class="auth-form">
+          <label class="field">
+            <span>账号</span>
+            <input id="login-username" type="text" autocomplete="username" required />
+          </label>
+          <label class="field">
+            <span>密码</span>
+            <input
+              id="login-password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </label>
+          <div class="auth-actions">
+            <button class="btn" type="submit">登录</button>
+            <button class="btn secondary" id="btn-demo-fill" type="button">
+              填入示例账号
+            </button>
+          </div>
+          <p class="auth-note" id="auth-message"></p>
+          <p class="auth-disclaimer">
+            提示：这是前端本地的“轻量权限门禁”。如需强安全（防拷贝/防绕过），需要后端鉴权或内网发布。
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <div class="app app-hidden" id="app-root">
+      <header class="app-header">
+        <div class="header-left">
+          <div class="brand-lockup">
+            <div class="brand-mark" aria-hidden="true"></div>
+            <div>
+              <h1>公司工资管理中心</h1>
+              <p>历史工资单 · 当月工资计算 · 社保维护</p>
+            </div>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="user-pill">
+            <span class="user-pill-label">当前用户：</span>
+            <span id="current-user" class="user-pill-value">-</span>
+          </div>
+          <button class="btn secondary" id="btn-logout" type="button">
+            退出登录
+          </button>
+        </div>
+      </header>
+
+      <main class="main-layout">
+        <!-- 左侧导航栏 -->
+        <nav class="sidebar-nav">
+          <button
+            class="sidebar-nav-btn active"
+            data-main-target="panel-history"
+          >
+            <span class="sidebar-nav-icon" aria-hidden="true">📁</span>
+            <span>历史工资单</span>
+          </button>
+          <div class="sidebar-nav-group">
+            <button class="sidebar-nav-btn sidebar-nav-parent" data-submenu="payroll-submenu">
+              <span class="sidebar-nav-icon" aria-hidden="true">📊</span>
+              <span>当月工资计算</span>
+              <span class="submenu-arrow">▼</span>
+            </button>
+            <div class="sidebar-submenu" id="payroll-submenu">
+              <button class="sidebar-nav-btn sidebar-nav-child" data-main-target="panel-payroll">
+                <span class="sidebar-nav-icon" aria-hidden="true">💰</span>
+                <span>部门工资</span>
+              </button>
+              <button class="sidebar-nav-btn sidebar-nav-child" data-main-target="panel-info">
+                <span class="sidebar-nav-icon" aria-hidden="true">⚙️</span>
+                <span>信息维护</span>
+              </button>
+            </div>
+          </div>
+        </nav>
+
+        <!-- 右侧内容区 -->
+        <div class="content-area">
+        <!-- 第一板块：历史工资单 -->
+        <section id="panel-history" class="main-panel active">
+          <div class="panel-header">
+            <div>
+              <h2>历史工资单档案</h2>
+              <p>
+                按月份集中管理已结算的工资单，可从本系统保存或从 JSON 文件导入，并支持再次导出。
+              </p>
+            </div>
+          </div>
+
+          <div class="history-layout">
+            <section class="history-list-section">
+              <div class="history-list-header">
+                <h3>已保存的历史工资单</h3>
+                <p>存储在本机浏览器，不会上传服务器。</p>
+                <div style="margin-top: 12px;">
+                  <label class="icon-btn-label" style="display: inline-flex;">
+                    <span class="icon-btn-icon">📥</span>
+                    <span class="icon-btn-text">导入Excel工资单</span>
+                    <input id="file-history-import-excel" type="file" accept=".xlsx,.xls" style="display: none;" />
+                  </label>
+                </div>
+              </div>
+              <div id="history-list" class="history-list history-list-empty">
+                暂无历史记录，可先选择月份并"从当前界面保存为该月工资单"。
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <!-- 第二板块：当月工资计算 -->
+        <section id="panel-current" class="main-panel">
+          <section class="month-section">
+            <label for="month-input">结算月份：</label>
+            <input id="month-input" type="month" />
+          </section>
+        </section>
+
+        <!-- 第三板块：部门工资 -->
+        <section id="panel-payroll" class="main-panel">
+          <section class="month-section">
+            <label for="month-input-payroll">结算月份：</label>
+            <input id="month-input-payroll" type="month" />
+            <button id="btn-save-payroll-history" class="btn" style="margin-left: auto;">
+              <span>💾</span>
+              <span>保存当月工资记录</span>
+            </button>
+          </section>
+
+          <section class="tools-section">
+            <div class="tool-window">
+              <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 15px;">📊 自动计算工资</h3>
+              <p class="hint" style="margin: 0 0 12px 0; font-size: 13px; color: #64748b;">
+                上传包含"清单"、"调整金额"的Excel文件，系统将自动计算每个员工的完整工资信息。<br>
+                <strong style="color: #2563eb;">社保名单和社保金额将从网页"信息维护"页面自动读取，无需在Excel中包含。</strong>
+              </p>
+              <label class="icon-btn-label">
+                <span class="icon-btn-icon">🎯</span>
+                <span class="icon-btn-text">自动计算工资（Excel）</span>
+                <input id="file-auto-calculate" type="file" accept=".xlsx,.xls" style="display: none;" />
+              </label>
+            </div>
+
+            <div class="tool-window">
+              <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 15px;">📤 导入导出</h3>
+              <div class="icon-btn-group">
+                <button id="btn-export-excel" class="icon-btn-label">
+                  <span class="icon-btn-icon">📊</span>
+                  <span class="icon-btn-text">导出工资单（Excel）</span>
+                </button>
+                <label class="icon-btn-label">
+                  <span class="icon-btn-icon">📥</span>
+                  <span class="icon-btn-text">导入Excel工资单</span>
+                  <input id="file-import-excel" type="file" accept=".xlsx,.xls" style="display: none;" />
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <nav class="tabs">
+                <button class="tab-button active" data-target="dept-injection">
+                  注塑车间
+                </button>
+                <button class="tab-button" data-target="dept-hardware">
+                  五金车间
+                </button>
+                <button class="tab-button" data-target="dept-management">
+                  管理人员
+                </button>
+              </nav>
+
+          <section id="dept-injection" class="dept-panel active">
+          <h2>注塑车间</h2>
+          <p class="hint">
+            可根据公司制度自定义：基本工资、计件/加班、奖金、扣款等。
+          </p>
+          <div class="table-wrapper">
+            <table class="salary-table" data-dept="injection">
+              <thead>
+                <tr>
+                  <th>姓名</th>
+                  <th class="hidden-column">出勤天数</th>
+                  <th>基本工资</th>
+                  <th class="hidden-column">加班天数</th>
+                  <th>加班工资</th>
+                  <th>奖金</th>
+                  <th>社保补贴</th>
+                  <th>应发工资</th>
+                  <th>养老金</th>
+                  <th>医疗保险</th>
+                  <th>失业保险</th>
+                  <th class="hidden-column">餐费代扣</th>
+                  <th class="hidden-column">补缴/个税</th>
+                  <th>实发工资</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="9" class="tfoot-label">本部门合计：</td>
+                  <td class="dept-total">0</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="actions">
+            <button class="btn add-row" data-dept="injection">+ 新增员工</button>
+            <button class="btn secondary clear-dept" data-dept="injection">
+              清空本部门
+            </button>
+          </div>
+          </section>
+
+          <section id="dept-hardware" class="dept-panel">
+          <h2>五金车间</h2>
+          <p class="hint">
+            与注塑车间同样规则，可按小时、计件或绩效折算填入各列。
+          </p>
+          <div class="table-wrapper">
+            <table class="salary-table" data-dept="hardware">
+              <thead>
+                <tr>
+                  <th>姓名</th>
+                  <th class="hidden-column">出勤天数</th>
+                  <th>基本工资</th>
+                  <th class="hidden-column">加班天数</th>
+                  <th>加班工资</th>
+                  <th>奖金</th>
+                  <th>社保补贴</th>
+                  <th>应发工资</th>
+                  <th>养老金</th>
+                  <th>医疗保险</th>
+                  <th>失业保险</th>
+                  <th class="hidden-column">餐费代扣</th>
+                  <th class="hidden-column">补缴/个税</th>
+                  <th>实发工资</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="9" class="tfoot-label">本部门合计：</td>
+                  <td class="dept-total">0</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="actions">
+            <button class="btn add-row" data-dept="hardware">+ 新增员工</button>
+            <button class="btn secondary clear-dept" data-dept="hardware">
+              清空本部门
+            </button>
+          </div>
+          </section>
+
+          <section id="dept-management" class="dept-panel">
+          <h2>管理人员</h2>
+          <p class="hint">
+            可录入固定工资、绩效奖金、全勤奖、罚款等，系统自动汇总。
+          </p>
+          <div class="table-wrapper">
+            <table class="salary-table" data-dept="management">
+              <thead>
+                <tr>
+                  <th>姓名</th>
+                  <th class="hidden-column">出勤天数</th>
+                  <th>基本工资</th>
+                  <th class="hidden-column">加班天数</th>
+                  <th>加班工资</th>
+                  <th>奖金</th>
+                  <th>社保补贴</th>
+                  <th>应发工资</th>
+                  <th>养老金</th>
+                  <th>医疗保险</th>
+                  <th>失业保险</th>
+                  <th class="hidden-column">餐费代扣</th>
+                  <th class="hidden-column">补缴/个税</th>
+                  <th>实发工资</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="9" class="tfoot-label">本部门合计：</td>
+                  <td class="dept-total">0</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="actions">
+            <button class="btn add-row" data-dept="management">+ 新增员工</button>
+            <button class="btn secondary clear-dept" data-dept="management">
+              清空本部门
+            </button>
+          </div>
+          </section>
+        </section>
+
+        <!-- 第四板块：信息维护 -->
+        <section id="panel-info" class="main-panel">
+          <nav class="tabs">
+                <button class="tab-button active" data-target="page-social-security">
+                  社保名单
+                </button>
+                <button class="tab-button" data-target="page-social-amount">
+                  社保金额
+                </button>
+              </nav>
+
+              <section id="page-social-security" class="dept-panel active">
+                <h3>社保名单</h3>
+                <p class="hint">
+                  维护"已缴社保"的员工名单（本地保存到浏览器）。可用于对照工资单。
+                </p>
+                <div class="table-wrapper">
+                  <table class="salary-table" id="ss-table">
+                    <thead>
+                      <tr>
+                        <th>姓名</th>
+                        <th>部门</th>
+                        <th>社保类型</th>
+                        <th>备注</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+                <div class="actions">
+                  <button class="btn" id="ss-add-row">+ 新增</button>
+                  <button class="btn secondary" id="ss-clear">清空</button>
+                  <label class="icon-btn-label">
+                    <span class="icon-btn-icon">📤</span>
+                    <span class="icon-btn-text">导出Excel</span>
+                    <button class="btn secondary" id="ss-export-excel" style="display: none;"></button>
+                  </label>
+                  <label class="icon-btn-label">
+                    <span class="icon-btn-icon">📥</span>
+                    <span class="icon-btn-text">导入Excel</span>
+                    <input id="ss-import-excel" type="file" accept=".xlsx,.xls" style="display: none;" />
+                  </label>
+                </div>
+              </section>
+
+              <section id="page-social-amount" class="dept-panel">
+                <h3>社保金额</h3>
+                <p class="hint">
+                  设置社保相关金额（本地保存到浏览器）。用于自动计算工资时的社保扣除。
+                </p>
+                <div class="social-amount-form">
+                  <div class="form-row">
+                    <label class="field">
+                      <span>基本工资：</span>
+                      <input id="ss-amount-base" type="number" step="0.01" min="0" placeholder="0.00" class="salary-input" />
+                    </label>
+                    <label class="field">
+                      <span>养老金：</span>
+                      <input id="ss-amount-pension" type="number" step="0.01" min="0" placeholder="0.00" class="salary-input" />
+                    </label>
+                  </div>
+                  <div class="form-row">
+                    <label class="field">
+                      <span>医疗保险：</span>
+                      <input id="ss-amount-medical" type="number" step="0.01" min="0" placeholder="0.00" class="salary-input" />
+                    </label>
+                    <label class="field">
+                      <span>失业保险：</span>
+                      <input id="ss-amount-unemployment" type="number" step="0.01" min="0" placeholder="0.00" class="salary-input" />
+                    </label>
+                  </div>
+                </div>
+              </section>
+        </section>
+        </div>
+      </main>
+
+      <footer class="app-footer">
+        <small>所有计算仅在本地浏览器完成，不会上传服务器。</small>
+      </footer>
+    </div>
+
+    <!-- 自定义弹窗 -->
+    <div id="custom-modal-overlay" class="modal-overlay" style="display: none;">
+      <div class="modal-container">
+        <div class="modal-content">
+          <div class="modal-title" id="modal-title"></div>
+          <div class="modal-message" id="modal-message"></div>
+          <div class="modal-buttons" id="modal-buttons"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Excel 导入导出依赖：SheetJS（CDN）。若无网络，Excel 功能不可用，但 JSON 功能仍可用。 -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+      defer
+    ></script>
+    <script src="api.js"></script>
+    <script src="script.js"></script>
+  </body>
+  </html>
+
